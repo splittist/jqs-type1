@@ -306,6 +306,11 @@
       (aref +standard-strings+ sid)
       (cff-index-item (cff-strings font) (- sid +n-strings+))))
 
+(defun string-sid (font octets)
+  (alexandria:if-let ((position (position octets +standard-strings+ :test 'octets=)))
+    position
+    (error "Unimplemented string search in cff strings")))
+
 (defparameter +standard-encoding+
   #(0 0 0 0 0 0 0 0 0 0
     0 0 0 0 0 0 0 0 0 0
@@ -577,7 +582,6 @@
 	(setf (cff-local-subrs font) (cff-read-index stream)))
     font)))
 
-
 (defun glyph-count (font)
   (cff-index-count (cff-charstrings font)))
 
@@ -612,8 +616,8 @@
   (:method ((font cff-font))
     (gethash :font-bbox (cff-top-dict font))))
 
-(defun character-code-glyph (font character-code)
-  (cff-index-item (cff-charstrings font) character-code))
+(defun character-index-glyph (font character-index)
+  (cff-index-item (cff-charstrings font) character-index))
 
 (defun character-code-name (font character-code)
   (sid-string font (aref (cff-charsets font) (1- character-code))))
@@ -626,4 +630,6 @@
 
 (defun default-width-x (font)
   (gethash :default-widht-x (cff-private-dicts font)))
+
+;;;# OFF
 

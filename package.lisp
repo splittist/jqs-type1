@@ -2,4 +2,13 @@
 
 (defpackage #:com.splittist.type1
   (:use #:cl)
-  (:export))
+  (:export
+   #:cff-font
+   #:read-cff
+   #:make-glyph
+   #:with-glyph
+   #:move-to
+   #:line-to
+   #:curve-to
+   #:close-path
+   ))

@@ -910,39 +910,77 @@
 
 ;;;# MOVE LINE CURVE CLOSE-PATH
 
+(defvar *device* nil)
+
+(defgeneric move-to (device x y))
+
+(defun move (x y)
+  (move-to *device* x y))
+
+(defgeneric line-to (device x y))
+
+(defun line (x y)
+  (line-to *device* x y))
+
+(defgeneric curve-to (device x1 y1 x2 y2 x3 y3))
+
+(defun curve (x1 y1 x2 y2 x3 y3)
+  (curve-to *device* x1 y1 x2 y2 x3 y3))
+
+(defgeneric close-path (device))
+
+(defun close-path* ()
+  (close-path *device*))
+
+;;;# SVG testing
+
+(defclass svg-device ()
+  ())
+
 (defparameter *points* nil)
 (defparameter *control-points* nil)
 
-(defun move (x y)
+(defmethod move-to ((device svg-device) x y)
   (push (cons x (- 500 y)) *points*)
   (format t "M ~A ~A " x (- 500 y)))
 
-(defun line (x y)
+(defmethod line-to ((device svg-device) x y)
   (push (cons x (- 500 y)) *points*)
   (format t "L ~A ~A " x (- 500 y)))
 
-(defun curve (x1 y1 x2 y2 x3 y3)
+(defmethod curve-to ((device svg-device) x1 y1 x2 y2 x3 y3)
   (push (cons x3 (- 500 y3)) *points*)
   (push (cons x1 (- 500 y1)) *control-points*)
   (push (cons x2 (- 500 y2)) *control-points*)
   (format t "C ~A ~A ~A ~A ~A ~A " x1 (- 500 y1) x2 (- 500 y2) x3 (- 500 y3)))
 
-(defun close-path ()
+(defmethod close-path ((device svg-device))
   (format t "Z"))
 
 ;;;# TESTING
 
-(defun make-glyph (font character-code)
-  (serapeum:lret ((glyph (read-type2-charstring
-			  (make-octet-vector-stream (character-code-glyph font character-code))
-			  (nominal-width-x font)
-			  (default-width-x font))))
-    (setf (glyph-name glyph) (octets-latin1 (character-code-name font character-code)))))
+(defparameter *device* nil)
+
+(defmacro with-glyph ((glyph device) &body body)
+  `(let ((*context* (make-instance 'ps-context :glyph ,glyph))
+	 (*device* ,device))
+     ,@body))
+
+(defun make-glyph (font character-name)
+  (let* ((sid (string-sid font character-name))
+	 (name-index (position sid (cff-charsets font)))
+	 (glyph (read-type2-charstring
+		 (make-octet-vector-stream (character-index-glyph font (1+ name-index)))
+		 (nominal-width-x font)
+		 (default-width-x font))))
+    (setf (glyph-name glyph) (octets-latin1 character-name))
+    glyph))
 
 (defparameter *glyph-test-directory* #P"c:/Users/David/Downloads/")
 
 (defun do-glyph (glyph)
   (let ((*context* (make-instance 'ps-context :glyph glyph))
+	(*device* (make-instance 'svg-device))
 	(pathname (make-pathname :defaults *glyph-test-directory* :name (glyph-name glyph) :type "svg"))
 	(*points* '())
 	(*control-points* '()))
