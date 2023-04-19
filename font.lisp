@@ -153,7 +153,7 @@
     (:underline-thickness 50)
     (:paint-type 0)
     (:charstring-type 2)
-    (:font-matrix #(0.001 0 0 0.001 0))
+    (:font-matrix #(0.001 0 0 0.001 0 0))
     (:font-bbox #(0 0 0 0))
     (:stroke-width 0)
     (:charset 0)
