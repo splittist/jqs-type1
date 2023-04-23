@@ -968,7 +968,7 @@
 
 (defun make-glyph (font character-name)
   (let* ((sid (string-sid font character-name))
-	 (name-index (position sid (cff-charsets font)))
+	 (name-index (or (position sid (cff-charsets font)) 0)) ;; DEBUG FIXME
 	 (glyph (read-type2-charstring
 		 (make-octet-vector-stream (character-index-glyph font (1+ name-index)))
 		 (nominal-width-x font)

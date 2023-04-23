@@ -306,10 +306,19 @@
       (aref +standard-strings+ sid)
       (cff-index-item (cff-strings font) (- sid +n-strings+))))
 
+(defun find-string-index (font octets)
+  (let* ((strings (cff-strings font))
+	 (count (cff-index-count strings)))
+    (loop for index below count
+	  for item = (cff-index-item strings index)
+	  when (octets= octets item)
+	    do (return index)
+	  finally (return nil))))
+
 (defun string-sid (font octets)
   (alexandria:if-let ((position (position octets +standard-strings+ :test 'octets=)))
     position
-    (error "Unimplemented string search in cff strings")))
+    (or (find-string-index font octets) 0))) ;; FIXME
 
 (defparameter +standard-encoding+
   #(0 0 0 0 0 0 0 0 0 0
