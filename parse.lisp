@@ -44,9 +44,11 @@
       (princ (octets-latin1 value) stream))))
 
 (defun nameql (name1 name2)
-  (assert (and (typep name1 'ps-name)
-	       (typep name2 'ps-name)))
-  (octets= (object-value name1) (object-value name2)))
+  (when (typep name1 'ps-name)
+    (setf name1 (object-value name1)))
+  (when (typep name2 'ps-name)
+    (setf name2 (object-value name2)))
+  (octets= name1 name2))
 
 (defparameter +mark+ (make-instance 'ps-simple-object :value #"mark"))
 
@@ -301,6 +303,74 @@
     (with-input-from-octet-vector (*ps-stream* octets)
       (read-name))))
 
+(defclass eexec-stream (trivial-gray-streams:fundamental-binary-input-stream)
+  ((%base-stream
+    :initarg :base
+    :accessor eexec-stream-base-stream)
+   (%peeked-byte
+    :accessor peeked-byte
+    :initform nil)
+   (%r
+    :accessor eexec-stream-r
+    :initform +eexec-key+)))
+
+(defun eexec-decrypt-byte (stream)
+  (with-accessors ((R eexec-stream-r) (bs eexec-stream-base-stream)) stream
+    (let ((byte (read-byte bs)))
+      (if (eq :eof byte)
+	  :eof
+	  (prog1 (logxor byte (ldb (byte 8 8) R))
+	    (setf R (logand (+ +crypt-c2+
+			       (* (+ byte R)
+				  +crypt-c1+))
+			    #xFFFF)))))))
+
+(defmethod initialize-instance :after ((stream eexec-stream) &key)
+  (setf (peeked-byte stream)
+	(eexec-decrypt-byte stream)))
+
+(defmethod trivial-gray-streams:stream-read-byte ((stream eexec-stream))
+  (unless (open-stream-p stream)
+    (error 'stream-error :stream stream))
+  (shiftf (peeked-byte stream)
+	  (eexec-decrypt-byte stream)))
+
+(defmethod trivial-gray-streams:stream-listen ((stream eexec-stream))
+  (unless (open-stream-p stream)
+    (error 'stream-error :stream stream))
+  (not (eq :eof (peeked-byte stream))))
+
+(defmethod trivial-gray-streams:stream-read-sequence ((stream eexec-stream) sequence start end &key)
+  (loop for index from start below end
+	for char = (read-byte stream nil :eof)
+	until (eq :eof char)
+	do (setf (elt sequence index) char)
+	finally (return index)))
+
+(defmethod trivial-gray-streams:stream-file-position ((stream eexec-stream))
+  (file-position (eexec-stream-base-stream stream)))
+
+(defmethod (setf trivial-gray-streams:stream-file-position) (position-spec (stream eexec-stream))
+  (unless (integerp position-spec) (error 'stream-error :stream stream))
+  (file-position (eexec-stream-base-stream stream) position-spec)
+  (setf (peeked-byte stream) (eexec-decrypt-byte stream))
+  position-spec)
+
+(defmethod peek-byte ((stream eexec-stream) &optional peek-type eof-error-p eof-value)
+  (loop for octet = (peeked-byte stream)
+	until (cond ((eq :eof octet)
+		     (return eof-value))
+		    ((null peek-type))
+		    ((eq t peek-type)
+		     (not (white-space-p octet)))
+		    ((= octet peek-type)))
+	do (read-byte stream eof-error-p :eof)
+	finally (return octet)))
+
+(defun make-eexec-stream (base-stream &optional (skip 4))
+  (serapeum:lret ((es (make-instance 'eexec-stream :base base-stream)))
+    (loop repeat skip do (read-byte es))))
+
 (defconstant +crypt-c1+ 52845)
 (defconstant +crypt-c2+ 22719)
 (defconstant +eexec-key+ 55665)
@@ -335,7 +405,7 @@
 
 (defun decrypt-eexec (bytes)
   (decrypt-bytes bytes +eexec-key+ 4))
-
+ 
 (defun decrypt-charstring (bytes)
   (decrypt-bytes bytes +charstring-key+ 4))
 
@@ -348,11 +418,37 @@
 	do (vector-push-extend byte bytes)
 	finally (return (octets-latin1 (decrypt-eexec bytes)))))
 
+(defun skip-to-nd (stream)
+  (loop for byte = (read-byte stream nil)
+	and prev = nil then byte
+	while byte
+	until (and prev (= #!N prev) (= #!D byte))
+	collecting byte into bytes
+	finally (return (decrypt-charstring (apply 'vector (subseq bytes 1 (- (length bytes) 2)))))))
+
+(defun test-charstring (charstring)
+  (with-input-from-octet-vector (s charstring)
+    (read-type1-charstring s)))
+
 (defun test ()
   (with-input-from-octet-file (*ps-stream* "c:/Users/David/Downloads/urw-base35-fonts-20200910/urw-base35-fonts-20200910/fonts/StandardSymbolsPS.t1")
     (loop with eexec = (make-instance 'ps-name :value #"eexec")
+	  with RD = (make-instance 'ps-name :value #"RD")
+	  with closefile = (make-instance 'ps-name :value #"closefile")
+	  with glyphs = '()
 	  for obj = (read-object nil)
 	  until (eq :eof obj)
 	  when (and (typep obj 'ps-name)
 		    (nameql eexec obj))
-	    do (return (eexec-test 10000)))))
+	    do (read-byte *ps-stream*)
+	       (let ((*ps-stream* (make-eexec-stream *ps-stream*)))		 
+		 (loop for obj = (read-object nil)
+		       and stack1 = nil then obj
+		       until (eq :eof obj)
+		       until (and (typep obj 'ps-name)
+				  (nameql closefile obj))
+		       when (and (typep obj 'ps-name)
+				 (nameql RD obj))
+			 do (push (test-charstring (skip-to-nd *ps-stream*)) glyphs)
+		       else do (print obj)))
+	  finally (return glyphs))))

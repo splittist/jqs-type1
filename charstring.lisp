@@ -34,9 +34,6 @@
    (%stack
     :initform (make-array 48 :fill-pointer 0)
     :accessor ps-context-stack)
-   (%transient-array
-    :initform (make-array 32)
-    :accessor ps-context-transient-array)
    (%current-x
     :initform 0
     :accessor ps-context-current-x)
@@ -49,6 +46,12 @@
    (%path-y
     :initform 0
     :accessor ps-context-path-y)
+   ))
+
+(defclass cff-context (ps-context)
+  ((%transient-array
+    :initform (make-array 32)
+    :accessor cff-context-transient-array)
    (%hintmask-index
     :initform 0
     :accessor ps-context-hintmask-index)))
@@ -73,10 +76,10 @@
   '(ps-context-path-y *context*))
 
 (defmacro ps-transient-array ()
-  '(ps-context-transient-array *context*))
+  '(cff-context-transient-array *context*))
 
 (defmacro ps-hintmask-index ()
-  '(ps-context-hintmask-index *context*))
+  '(cff-context-hintmask-index *context*))
 
 (defun ps-push (element)
   (vector-push element (ps-stack)))
@@ -91,7 +94,7 @@
   (cff-subroutine (ps-context-font *context*) num))
 
 (defun ps-global-subroutine (num)
-  (cff-global-subroutine (ps-context-font *context* num)))
+  (cff-global-subroutine (ps-context-font *context*) num))
 
 ;;;# Path Primitives
 
@@ -664,8 +667,10 @@
 	with vstems = '()
 	with code-vector = (make-array 0 :fill-pointer 0)
 	with stack = (make-array 0 :fill-pointer 0)
+	with end = nil
 	for b0 = (read-byte stream nil :eof)
 	until (eq :eof b0)
+	until end
 	do (let ((code
 		   (case b0
 		     ;; 0 -Reserved-
@@ -795,8 +800,8 @@
 		      (if (and (null width) (plusp (length stack)))
 			  (setf width (aref stack 0))
 			  (setf width t))
-		      (ps-endchar)
-		      (loop-finish))
+		      (setf end t)
+		      (ps-endchar))
 		     ;; 15 -Reserved-
 		     ;; 16 -Reserved-
 		     ;; 17 -Reserved-
@@ -899,7 +904,7 @@
 	     (if code
 		 (vector-push-extend code code-vector)
 		 (warn "Unknown charstring code ~D" b0)))
-	finally (return (make-instance 'glyph
+	finally (return (make-instance 'cff-glyph
 				       :code code-vector
 				       :width (if (numberp width) width default-width-x)
 				       :hstems hstems
@@ -962,7 +967,7 @@
 (defparameter *device* nil)
 
 (defmacro with-glyph ((glyph device) &body body)
-  `(let ((*context* (make-instance 'ps-context :glyph ,glyph))
+  `(let ((*context* (make-instance 'cff-context :glyph ,glyph))
 	 (*device* ,device))
      ,@body))
 
@@ -979,7 +984,7 @@
 (defparameter *glyph-test-directory* #P"c:/Users/David/Downloads/")
 
 (defun do-glyph (glyph)
-  (let ((*context* (make-instance 'ps-context :glyph glyph))
+  (let ((*context* (make-instance 'cff-context :glyph glyph))
 	(*device* (make-instance 'svg-device))
 	(pathname (make-pathname :defaults *glyph-test-directory* :name (glyph-name glyph) :type "svg"))
 	(*points* '())
@@ -989,7 +994,7 @@
       (format t "<svg width=\"1500\" height=\"2000\" version=\"1.1\" xmlns=\"http://www.w3.org/2000/svg\">~%")
       (format t "<g transform=\"translate(500,500)\" fill=\"none\" stroke=\"black\" >~%")
       (format t "~%<line x1='0' x2='1000' y1='500' y2='500' stroke='DarkGray' />")
-      (format t "~%<line x1='0' x2='0' y1='500' y2='-500' storke='DarkGray' />")
+      (format t "~%<line x1='0' x2='0' y1='500' y2='-500' stroke='DarkGray' />")
       (loop for hstem in (glyph-hstems glyph)
 	    for accum = hstem then (+ accum hstem)
 	    do (format t "~%<line x1='0' x2='1000' y1='~D' y2='~D' stroke='CornflowerBlue' />" (- 500 accum) (- 500 accum)))
@@ -1007,3 +1012,400 @@
       (format t "~%</g>~%</svg>"))
     pathname))
 
+;;;# TYPE 1
+
+(defclass type1-context (ps-context)
+  ((%vstems
+    :accessor type1-context-vstems
+    :initform nil)
+   (%hstems
+    :accessor type1-context-hstems
+    :initform nil)
+   (%dotsection
+    :accessor type1-context-dotsection
+    :initform nil)
+   (%postscript-stack
+    :accessor type1-context-postscript-operand-stack
+    :initform (make-array 0 :fill-pointer 0))))
+
+(defmacro ps-current-vstems ()
+  '(type1-context-vstems *context*))
+
+(defmacro ps-current-hstems ()
+  '(type1-context-hstems *context*))
+
+(defmacro ps-current-dotsection ()
+  '(type1-context-dotsection *context*))
+
+(defmacro ps-postcript-stack (&optional index)
+  (if index
+      `(aref (type1-context-postscript-operand-stack *context*) ,index)
+      '(type1-context-postscript-operand-stack *context*)))
+
+(defun type1-othersubroutine (num)
+  (type1-othersubroutine (ps-context-font *context*) num))
+
+(defun type1-subroutine (num)
+  (type1-subroutine (ps-context-font *context*) num))
+
+(defun type1-endchar ()
+  (lambda ()
+    (ps-clear-stack)))
+
+;; "This command aslo sets the current point to (sbx, 0) but does not place
+;; the point in the character path."
+(defun type1-hsbw ()
+  (lambda ()
+    (setf (ps-current-x) (ps-stack 0))
+    (ps-clear-stack)))
+
+(defun type1-seac ()
+  (let ((asb (ps-stack 0))
+	;; offsets from left-sidebearing point of base char to lsb of accent???
+	;; see Errata in Type 1 Supplement
+	(adx (ps-stack 1))
+	(ady (ps-stack 2))
+	(bx (ps-current-x))
+	(by (ps-current-y))
+	(bchar (ps-stack 3))
+	(achar (ps-stack 4)))
+    (ps-clear-stack)
+    (type1-call-charstring bchar)
+    (setf (ps-current-x) (+ adx bx)
+	  (ps-current-y) (+ ady by)) ;; FIXME ???
+    (type1-call-charstring achar)
+    (ps-clear-stack)))
+
+(defun type1-sbw ()
+  (lambda ()
+    (setf (ps-current-x) (ps-stack 0)
+	  (ps-current-y) (ps-stack 1))
+    (ps-clear-stack)))
+
+(defun type1-closepath ()
+  (lambda ()
+    (unless (and (= (ps-current-x) (ps-path-x))
+		 (= (ps-current-y) (ps-path-y)))
+      (line (ps-path-x) (ps-path-y)))))
+
+(defun type1-hlineto ()
+  (lambda ()
+    (let ((dx (ps-stack 0)))
+      (line (incf (ps-current-x) dx) (ps-current-y))
+      (ps-clear-stack))))
+
+(defun type1-hmoveto ()
+  (lambda ()
+    (let ((dx (ps-stack 0)))
+      (move (incf (ps-current-x) dx) (ps-current-y))
+      (setf (ps-path-x) (ps-current-x)
+	    (ps-path-y) (ps-current-y))
+      (ps-clear-stack))))
+
+(defun type1-hvcurveto ()
+  (lambda ()
+    (let* ((dx1 (ps-stack 0))
+	   (dx2 (ps-stack 1))
+	   (dy2 (ps-stack 2))
+	   (dy3 (ps-stack 3))
+	   (x1 (+ dx1 (ps-current-x)))
+	   (y1 (ps-current-y))
+	   (x2 (+ dx2 x1))
+	   (y2 (+ dy2 y1))
+	   (x3 x2)
+	   (y3 (+ dy3 y2)))
+      (curve x1 y1 x2 y2 x3 y3)
+      (setf (ps-current-x) x3
+	    (ps-current-y) y3)
+      (ps-clear-stack))))
+
+(defun type1-rlineto ()
+  (lambda ()
+    (line (incf (ps-current-x) (ps-stack 0))
+	  (incf (ps-current-y) (ps-stack 1)))
+    (ps-clear-stack)))
+
+(defun type1-rmoveto ()
+  (lambda ()
+    (move (incf (ps-current-x) (ps-stack 0))
+	  (incf (ps-current-y) (ps-stack 1)))
+    (setf (ps-path-x) (ps-current-x)
+	  (ps-path-y) (ps-current-y))
+    (ps-clear-stack)))
+
+(defun type1-rrcurveto ()
+  (lambda ()
+    (let* ((dx1 (ps-stack 0))
+	   (dy1 (ps-stack 1))
+	   (dx2 (ps-stack 2))
+	   (dy2 (ps-stack 3))
+	   (dx3 (ps-stack 4))
+	   (dy3 (ps-stack 5))
+	   (x1 (+ dx1 (ps-current-x)))
+	   (y1 (+ dy1 (ps-current-y)))
+	   (x2 (+ dx2 x1))
+	   (y2 (+ dy2 y1))
+	   (x3 (+ dx3 x2))
+	   (y3 (+ dy3 y2)))
+      (curve x1 y1 x2 y2 x3 y3)
+      (setf (ps-current-x) x3
+	    (ps-current-y) y3)
+      (ps-clear-stack))))
+
+(defun type1-vhcurveto ()
+  (lambda ()
+    (let* ((dy1 (ps-stack 0))
+	   (dx2 (ps-stack 1))
+	   (dy2 (ps-stack 2))
+	   (dx3 (ps-stack 3))
+	   (x1 (ps-current-x))
+	   (y1 (+ dy1 (ps-current-y)))
+	   (x2 (+ dx2 x1))
+	   (y2 (+ dy2 y1))
+	   (x3 (+ dx3 x2))
+	   (y3 y2))
+      (curve x1 y1 x2 y2 x3 y3)
+      (setf (ps-current-x) x3
+	    (ps-current-y) y3)
+      (ps-clear-stack))))
+
+(defun type1-vlineto ()
+  (lambda ()
+    (line (ps-current-x) (incf (ps-current-y) (ps-stack 0)))
+    (ps-clear-stack)))
+
+(defun type1-vmoveto ()
+  (lambda ()
+    (move (ps-current-x) (incf (ps-current-y) (ps-stack 0)))
+    (setf (ps-path-x) (ps-current-x)
+	  (ps-path-y) (ps-current-y))
+    (ps-clear-stack)))
+
+(defun type1-dotsection ()
+  (lambda ()
+    (setf (ps-current-dotsection)
+	  (not (ps-current-dotsection)))
+    (ps-clear-stack)))
+
+(defun type1-hstem ()
+  (lambda ()
+    (let ((y (ps-stack 0))
+	  (dy (ps-stack 1)))
+      (push (cons y (+ y dy)) (ps-current-hstems))
+      (ps-clear-stack))))
+
+(defun type1-hstem3 ()
+  (lambda ()
+    (let ((y0 (ps-stack 0))
+	  (dy0 (ps-stack 1))
+	  (y1 (ps-stack 2))
+	  (dy1 (ps-stack 3))
+	  (y2 (ps-stack 4))
+	  (dy2 (ps-stack 5)))
+      (push (cons y0 (+ y0 dy0)) (ps-current-hstems))
+      (push (cons y1 (+ y1 dy1)) (ps-current-hstems))
+      (push (cons y2 (+ y2 dy2)) (ps-current-hstems))
+      (ps-clear-stack))))
+
+(defun type1-vstem ()
+  (lambda ()
+    (let ((x (ps-stack 0))
+	  (dx (ps-stack 1)))
+      (push (cons x (+ x dx)) (ps-current-vstems))
+      (ps-clear-stack))))
+
+(defun type1-vstem3 ()
+  (lambda ()
+    (let ((x0 (ps-stack 0))
+	  (dx0 (ps-stack 1))
+	  (x1 (ps-stack 2))
+	  (dx1 (ps-stack 3))
+	  (x2 (ps-stack 4))
+	  (dx2 (ps-stack 5)))
+      (push (cons x0 (+ x0 dx0)) (ps-current-vstems))
+      (push (cons x1 (+ x1 dx1)) (ps-current-vstems))
+      (push (cons x2 (+ x2 dx2)) (ps-current-vstems))
+      (ps-clear-stack))))
+
+(defun type1-div ()
+  (lambda ()
+    (let ((num2 (ps-pop))
+	  (num1 (ps-pop)))
+      (ps-push (/ num2 num1)))))
+
+(defun type1-callothersubr ()
+  (lambda ()
+    (let ((othersubr (ps-pop))
+	  (argument-count (ps-pop)))
+      (loop repeat argument-count
+	    do (vector-push-extend (ps-pop) (ps-postscript-stack)))
+      (type1-othersubroutine othersubr))))
+
+(defun type1-callsubr ()
+  (lambda ()
+    (let ((subroutine (ps-pop)))
+      (type1-subroutine num))))
+
+(defun type1-pop ()
+  (lambda ()
+    (ps-push (vector-pop (ps-postscript-stack))))) 
+
+#+(or)(defun type1-return ()
+  )
+
+(defun type1-setcurrentpoint ()
+  (lambda ()
+    (let ((x (ps-stack 0))
+	  (y (ps-stack 1)))
+      (setf (ps-current-x) x
+	    (ps-current-y) y)
+      (ps-clear-stack))))
+
+(defun read-type1-operand (stream b0)
+  (cond
+    ((<= 32 b0 246)
+     (- b0 139))
+    ((<= 247 b0 250)
+     (let ((b1 (read-byte stream)))
+       (+ (* 256 (- b0 247)) b1 108)))
+    ((<= 251 b0 254)
+     (let ((b1 (read-byte stream)))
+       (- (* -256 (- b0 251)) b1 108)))
+    ((= 255 b0)
+     (read-int32 stream))))
+
+(defun read-type1-charstring (stream)
+  (loop with stack = (make-array 0 :fill-pointer 0)
+	with code-vector = (make-array 0 :fill-pointer 0)
+	with left-sidebearing = nil
+	with width = nil
+	with bounding-box = (vector 0 0 0 0)
+	with end = nil
+	for b0 = (read-byte stream nil :eof)
+	until (eq :eof b0)
+	until end
+	do (let ((code
+		   (case b0
+		     ;; 0 -Reserved-
+		     (1 ;; hstem
+		      (setf (fill-pointer stack) 0)
+		      (type1-hstem))
+		     ;; 2 -Reserved-
+		     (3 ;; vstem
+		      (setf (fill-pointer stack) 0)
+		      (type1-vstem))
+		     (4 ;; vmoveto
+		      (setf (fill-pointer stack) 0)
+		      (type1-vmoveto))
+		     (5 ;; rlineto
+		      (setf (fill-pointer stack) 0)
+		      (type1-rlineto))
+		     (6 ;; hlineto
+		      (setf (fill-pointer stack) 0)
+		      (type1-hlineto))
+		     (7 ;; vlineto
+		      (setf (fill-pointer stack) 0)
+		      (type1-vlineto))
+		     (8 ;; rrcurveto
+		      (setf (fill-pointer stack) 0)
+		      (type1-rrcurveto))
+		     (9 ;; closepath
+		      (setf (fill-pointer stack) 0)
+		      (type1-closepath))
+		     (10 ;; callsubr
+		      (setf (fill-pointer stack) 0)
+		      (type1-callsubr))
+		     (11 ;; return
+		      nil) ;; FIXME Nothing to do?
+		     (12
+		      (let ((b1 (read-byte stream)))
+			(case b1
+			  (0 ;; dotsection
+			   (setf (fill-pointer stack) 0)
+			   (type1-dotsection))
+			  (1 ;; vstem3
+			   (setf (fill-pointer stack) 0)
+			   (type1-vstem3))
+			  (2 ;; hstem3
+			   (setf (fill-pointer stack) 0)
+			   (type1-hstem3))
+			  (6 ;; seac
+			   (setf (fill-pointer-stack) 0)
+			   (type1-seac))
+			  (7 ;; sbw
+			   (let ((sbx (aref stack 0))
+				 (sby (aref stack 1))
+				 (wx (aref stack 2))
+				 (wy (aref stack 3)))
+			     (setf left-sidebearing (vector sbx sby)
+				   width (vector wx wy)
+				   (fill-pointer stack) 0)
+			     (type1-sbw)))
+			  (12 ;; div
+			   (type1-div))
+			  (16 ;; callothersubr
+			   (type1-callothersubr))
+			  (17 ;; pop
+			   (type1-pop))
+			  (33 ;; setcurrentpoint
+			   (setf (fill-pointer stack) 0)
+			   (type1-setcurrentpoint)))))
+		     (13 ;; hsbw
+		      (setf left-sidebearing-point (vector (aref stack 0) 0)
+			    width (vector (aref stack 1) 0)
+			    (fill-pointer stack) 0)
+		      (type1-hsbw))
+		     (14 ;; endchar
+		      (setf end t)
+		      (type1-endchar))
+		     (21 ;; rmoveto
+		      (setf (fill-pointer stack) 0)
+		      (type1-rmoveto))
+		     (22 ;; hmoveto
+		      (setf (fill-pointer stack) 0)
+		      (type1-hmoveto))
+		     (30 ;; vhcurveto
+		      (setf (fill-pointer stack) 0)
+		      (type1-vhcurveto))
+		     (31 ;; hvcurveto
+		      (setf (fill-pointer stack) 0)
+		      (type1-hvcurveto))
+		     (otherwise
+		      (let ((number (read-type1-operand stream b0)))
+			(when number
+			  (vector-push-extend number stack)
+			  (lambda () (ps-push number)))))
+		     )))
+	     	     (if code
+			 (vector-push-extend code code-vector)
+			 (warn "Unknown charstring code ~D" b0)))
+	finally (return (make-instance 'type1-glyph
+				       :code code-vector
+				       :width width
+				       :left-sidebearing left-sidebearing))))
+
+;;;# TEST
+
+(defun do-type1-glyph (glyph)
+  (let ((*context* (make-instance 'type1-context :glyph glyph))
+	(*device* (make-instance 'svg-device))
+	(pathname (make-pathname :defaults *glyph-test-directory* :name "glyph" :type "svg"))
+	(*points* '())
+	(*control-points* '()))
+    (with-open-file (*standard-output* pathname :direction :output :if-exists :supersede)
+      (format t "<?xml version=\"1.0\" standalone=\"no\"?>~%")
+      (format t "<svg width=\"1500\" height=\"2000\" version=\"1.1\" xmlns=\"http://www.w3.org/2000/svg\">~%")
+      (format t "<g transform=\"translate(500,500)\" fill=\"none\" stroke=\"black\" >~%")
+      (format t "~%<line x1='0' x2='1000' y1='500' y2='500' stroke='DarkGray' />")
+      (format t "~%<line x1='0' x2='0' y1='500' y2='-500' stroke='DarkGray' />")
+
+      (format t "~&<path d=\"")
+      (loop for function across (glyph-code-vector glyph)
+	    do (funcall function))
+      (format t "\"/>~%")
+      (loop for (x . y) in *points*
+	    do (format t "~%<rect width='10' height='10' x='~D' y='~D' stroke='green'/>" (- x 5) (- y 5)))
+      (loop for (x . y) in *control-points*
+	    do (format t "~%<circle r='5' cx='~D' cy='~D' stroke='red'/>" x y))
+      (format t "~%</g>~%</svg>"))
+    pathname))

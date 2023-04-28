@@ -13,8 +13,19 @@
     :accessor glyph-code-vector)
    (%width
     :initarg :width
-    :accessor glyph-width)
-   (%hstems
+    :accessor glyph-width)))
+
+(defclass type1-glyph (glyph)
+  ((%bounding-box
+    :initarg :bounding-box
+    :accessor glyph-bounding-box)
+   (%left-sidebearing
+    :initarg :left-sidebearing
+    :accessor glyph-left-sidebearing-point)
+   ))
+
+(defclass cff-glyph (glyph)
+  ((%hstems
     :initarg :hstems
     :accessor glyph-hstems)
    (%vstems

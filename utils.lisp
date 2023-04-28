@@ -74,6 +74,14 @@
 (defun seek-to-offset (stream offset &optional (base 0))
   (file-position stream (+ offset base)))
 
+;;;# TYPE 1
+
+(defun read-int32 (stream)
+  (let ((u32 (read-card32 stream)))
+    (if (logbitp 31 u32)
+	(1- (- (logandc2 #xFFFFFFFF u32)))
+	u32)))
+
 ;;;# OCTET-VECTOR-STREAM
 
 (defclass octet-vector-stream (trivial-gray-streams:fundamental-binary-input-stream)

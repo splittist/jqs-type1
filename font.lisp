@@ -640,5 +640,61 @@
 (defun default-width-x (font)
   (gethash :default-widht-x (cff-private-dicts font)))
 
-;;;# OFF
+;;;# TYPE 1
 
+#|
+Private dictionary entries
+
+BlueFuzz
+BlueScale
+BlueShift
+BLueValues
+ExpansionFactor
+FamilyBlues
+FamilyOtherBlues
+ForceBold
+LanguageGroup
+lenIV
+MinFeature
+ND
+NP
+OtherBlues
+OtherSubrs
+password
+RD
+RndStemUp
+StdVW
+StemSnapH
+StemSnapV
+Subrs
+UniqueID
+|#
+
+(defclass type1-font ()
+  ())
+
+;; read-top-level - until /Private or eexec
+;; read-private
+;; read-charstrings
+
+
+(defun read-type1-stream (stream)
+  (let ((*ps-stream* stream)
+	(stack '())
+	(dict-stack '()))
+    (flet ((clear-stack () (setf stack '()))
+	   (def (val key) (setf (gethash key (first dict-stack)) val)))
+      (loop for obj = (read-object nil)
+	    until (eq :eof obj)
+	    do (cond
+		 ((not (object-executable-p object))
+		  (push obj stack))
+		 ((nameql #"dict" obj)
+		  (pop stack)
+		  (push (make-hash-table) dict-stack))
+		 ((nameql #"def" obj)
+		  (def (pop stack) (pop stack)))
+		 ((nameql #"end" obj)
+		  (push (pop dict-stack) stack))
+		 ;; { / } , [ , ] , readonly ?? , eexec
+		 )))))
