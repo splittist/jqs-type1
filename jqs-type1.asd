@@ -16,4 +16,5 @@
 	       (:file "font")
 	       (:file "glyph")
 	       (:file "charstring")
-	       (:file "parse")))
+	       (:file "parse")
+	       (:file "interpreter")))

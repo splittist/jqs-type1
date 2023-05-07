@@ -50,12 +50,30 @@
     (setf name2 (object-value name2)))
   (octets= name1 name2))
 
-(defparameter +mark+ (make-instance 'ps-simple-object :value #"mark"))
-
-(defparameter +null+ (make-instance 'ps-simple-object :value #"null"))
-
-(defclass ps-operator (ps-object)
+(defclass ps-mark (ps-simple-object)
   ())
+
+(defparameter +mark+ (make-instance 'ps-mark :value "mark"))
+
+(defclass ps-null (ps-simple-object)
+  ()
+  (:default-initargs :executablep nil))
+
+(defparameter +null+ (make-instance 'ps-null :value "null"))
+
+(defclass ps-boolean (ps-simple-object)
+  ()
+  (:default-initargs :executablep nil))
+
+(defparameter +true+ (make-instance 'ps-boolean :value "true"))
+
+(defparameter +false+ (make-instance 'ps-boolean :value "false"))
+
+(defclass ps-operator (ps-simple-object)
+  ((%function
+    :initarg :function
+    :accessor operator-function))
+  (:default-initargs :executablep t))
 
 ;;# COMPOSITE OBJECTS
 
@@ -67,7 +85,16 @@
     :type (member :unlimited :read-only :execute-only :none))))
 
 (defclass ps-array (ps-composite-object)
-  ())
+  ()
+  (:default-initargs :executablep nil))
+
+(defmethod print-object ((object ps-array) stream)
+  (print-unreadable-object (object stream :type t :identity t)
+    (alexandria:when-let ((value (object-value object)))
+      (princ (length value) stream))))
+
+(defun make-ps-array (elements)
+  (make-instance 'ps-array :value (apply 'vector elements)))
 
 (defclass ps-packed-array (ps-array)
   ()
@@ -78,10 +105,23 @@
   (:default-initargs :executablep t))
 
 (defclass ps-dictionary (ps-composite-object)
-  ())
+  ()
+  (:default-initargs :executablep nil))
+
+(defun make-ps-dictionary ()
+  (make-instance 'ps-dictionary :value (make-hash-table :test 'equalp)))
+
+(defun dict-def (dictionary key value)
+  (setf (gethash key (object-value dictionary)) value))
 
 (defclass ps-string (ps-composite-object)
-  ())
+  ()
+  (:default-initargs :executablep nil))
+
+(defmethod print-object ((object ps-string) stream)
+  (print-unreadable-object (object stream :type t :identity t)
+    (alexandria:when-let ((value (object-value object)))
+      (princ (octets-latin1 value) stream))))
 
 (defclass ps-file (ps-composite-object)
   ())
@@ -144,7 +184,7 @@
 	   (eat-char #!<)
 	   (let ((next (peek-byte *ps-stream*)))
 	     (case next
-	       (#!< (eat-char #!<) (make-instance 'ps-name :value #"<<"))
+	       (#!< (eat-char #!<) (make-instance 'ps-name :value #"<<" :executablep t))
 	       (#!~ (read-ascii85-string t))
 	       (otherwise
 		(read-hexadecimal-string t)))))
@@ -153,13 +193,13 @@
 	   (let ((next (peek-byte *ps-stream*)))
 	     (if (eql #!> next)
 		 (progn (eat-char #!>)
-			(make-instance 'ps-name :value #">>"))
+			(make-instance 'ps-name :value #">>" :executablep t))
 		 (make-instance 'ps-name :value (serapeum:vect char)))))
 	  ((= #!{ char)
 	   (read-procedure))
 	  ((delimiterp char)
 	   (eat-char char)
-	   (make-instance 'ps-name :value (serapeum:vect char)))
+	   (make-instance 'ps-name :value (serapeum:vect char) :executablep t))
 	  (t
 	   (read-name-or-number)))))
 
@@ -264,12 +304,12 @@
     (let ((first (peek-byte *ps-stream* nil nil :eof)))
       (when (eql first #!/)
 	(eat-char #!/)
-	(setf executablep nil))) ;; FIXME // immediate substitution
+	(setf executablep nil)))
     (loop for char = (peek-byte *ps-stream* nil nil :eof)
 	  until (eq :eof char)
 	  while (regular-character-p char)
 	  do (vector-push-extend (read-byte *ps-stream*) chars))
-    (make-instance 'ps-name :value chars)))
+    (make-instance 'ps-name :value chars :executablep executablep)))
 
 (defun read-name-or-number ()
   (let ((octets (serapeum:vect)))
@@ -438,6 +478,7 @@
 	  with glyphs = '()
 	  for obj = (read-object nil)
 	  until (eq :eof obj)
+	  do (print obj)
 	  when (and (typep obj 'ps-name)
 		    (nameql eexec obj))
 	    do (read-byte *ps-stream*)
