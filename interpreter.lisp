@@ -3,413 +3,6 @@
 (in-package #:com.splittist.type1)
 
 (named-readtables:in-readtable syntax)
-
-;;;# OPERATOR NAMES
-
-(defparameter +operators+
-  #(
-    ;; Operand Stack Maninpulation Operators
-    #"pop"
-    #"exch"
-    #"dup"
-    #"copy"
-    #"index"
-    #"roll"
-    #"clear"
-    #"count"
-    #"mark"
-    #"cleartomark"
-    #"countomark"
-    
-    ;; Arithmetic and Math Operators
-    #"add"
-    #"div"
-    #"idiv"
-    #"mod"
-    #"mul"
-    #"sub"
-    #"abs"
-    #"neg"
-    #"ceiling"
-    #"floor"
-    #"round"
-    #"truncate"
-    #"sqrt"
-    #"atan"
-    #"cos"
-    #"sin"
-    #"exp"
-    #"ln"
-    #"log"
-    #"rand"
-    #"srand"
-    #"rrand"
-    #"array"
-    #"["
-    #"]"
-    #"length"
-    #"get"
-    #"put"
-    #"getinterval"
-    #"putinterval"
-    #"astore"
-    #"aload"
-    #"copy"
-    #"forall"
-    
-    ;; Packed Array Operators
-    #"packedarray"
-    #"currentpacking"
-    #"setpacking"
-    ;; length, get, getinterval, aload, copy, forall
-    
-    ;; Dictionary Operators
-    #"dict"
-    #"<<"
-    #">>"
-    ;; length
-    #"maxlength"
-    #"begin"
-    #"end"
-    #"def"
-    #"load"
-    #"store"
-    ;; get, put
-    #"known"
-    #"where"
-    ;; copy, forall
-    #"currentdict"
-    #"errordict"
-    #"$error"
-    #"systemdict"
-    #"userdict"
-    #"globaldict"
-    #"statusdict"
-    #"countdictstack"
-    #"dictstack"
-    #"cleardictstack"
-
-    ;; String Operators
-    #"string"
-    ;; length, get, put, getinterval, putinterval, copy, forall
-    #"anchorsearch"
-    #"search"
-    #"token"
-
-    ;; Relational, Boolean and Bitwise Operators
-    #"eq"
-    #"ne"
-    #"ge"
-    #"gt"
-    #"le"
-    #"lt"
-    #"and"
-    #"not"
-    #"or"
-    #"xor"
-    #"true"
-    #"false"
-    #"bitshift"
-
-    ;; Control Operators
-    #"exec"
-    #"if"
-    #"ifelse"
-    #"for"
-    #"repeat"
-    #"loop"
-    #"exit"
-    #"stop"
-    #"stopped"
-    #"countexecstack"
-    #"execstack"
-    #"quit"
-    #"start"
-
-    ;; Type, Attribute, and Conversion Operators
-    #"type"
-    #"cvlit"
-    #"cvx"
-    #"xcheck"
-    #"executeonly"
-    #"noaccess"
-    #"readonly"
-    #"rcheck"
-    #"wcheck"
-    #"cvi"
-    #"cvn"
-    #"cvr"
-    #"cvrs"
-    #"cvs"
-
-    ;; File Operators
-    #"file"
-    #"filter"
-    #"closefile"
-    #"read"
-    #"write"
-    #"readhexstring"
-    #"writehexstring"
-    #"readstring"
-    #"writestring"
-    #"readline"
-    ;; token
-    #"bytesavailable"
-    #"flush"
-    #"flushfile"
-    #"resetfile"
-    #"status"
-    #"run"
-    #"currentfile"
-    #"deletefile"
-    #"renamefile"
-    #"filenameforall"
-    #"setfileposition"
-    #"fileposition"
-    #"print"
-    #"="
-    #"=="
-    #"stack"
-    #"pstack"
-    #"printobject"
-    #"writeobject"
-    #"setobjectformat"
-    #"currentobjectformat"
-
-    ;; Resource Operators
-    #"defineresource"
-    #"undefineresource"
-    #"findresource"
-    #"resourcestatus"
-    #"resourceforall"
-
-    ;; Virtual Memory Operators
-    #"save"
-    #"restore"
-    #"setglobal"
-    #"currentglobal"
-    #"gcheck"
-    #"startjob"
-    #"defineuserobject"
-    #"execuserobject"
-    #"undefineuserobject"
-    #"UserObjects"
-
-    ;; Miscellaneous Operators
-    #"bind"
-    #"null"
-    #"version"
-    #"realtime"
-    #"usertime"
-    #"languagelevel"
-    #"product"
-    #"revision"
-    #"serialnumber"
-    #"executive"
-    #"echo"
-    #"prompt"
-
-    ;; Graphics State Operators -- Device Independent
-    #"gsave"
-    #"grestore"
-    #"grestoreall"
-    #"initgraphics"
-    #"gstate"
-    #"setgstate"
-    #"currentgstate"
-    #"setlinewidth"
-    #"currentlinewidth"
-    #"setlinecap"
-    #"currentlinecap"
-    #"setlinejoin"
-    #"setmiterlimit"
-    #"currentmiterlimit"
-    #"setstrokeadjust"
-    #"currentstrokeadjust"
-    #"setdash"
-    #"currentdash"
-    #"setcolorspace"
-    #"currentcolorspace"
-    #"setcolor"
-    #"currentcolor"
-    #"setgray"
-    #"currentgray"
-    #"sethsbcolor"
-    #"currenthsbcolor"
-    #"setrgbcolor"
-    #"currentrgbcolor"
-    #"setcmykcolor"
-    #"currentcmykcolor"
-
-    ;; Graphics State Operators -- Device Dependant
-    #"sethalftone"
-    #"currenthalftone"
-    #"setscreen"
-    #"currentscreen"
-    #"setcolorscreen"
-    #"currentcolorscreen"
-    #"settransfer"
-    #"currenttransfer"
-    #"setcolorstransfer"
-    #"currentcolortransfer"
-    #"setblackgeneration"
-    #"currentblackgeneration"
-    #"setundercolorremoval"
-    #"currentundercolorremoval"
-    #"setcolorrendering"
-    #"currentcolorrendering"
-    #"setflat"
-    #"currentflat"
-    #"setoverprint"
-    #"currentoverprint"
-
-    ;; Coordinate System and Matrix Operators
-    #"matrix"
-    #"initmatrix"
-    #"identmatrix"
-    #"defaultmatrix"
-    #"currentmatrix"
-    #"setmatrix"
-    #"translate"
-    #"scale"
-    #"rotate"
-    #"concat"
-    #"concatmatrix"
-    #"transform"
-    #"dtransform"
-    #"itransform"
-    #"idtransform"
-    #"invertmatrix"
-
-    ;; Path Construction Operators
-    #"newpath"
-    #"currentpoint"
-    #"moveto"
-    #"rmoveto"
-    #"lineto"
-    #"rlineto"
-    #"arc"
-    #"arcn"
-    #"arct"
-    #"arcto"
-    #"curveto"
-    #"rcurveto"
-    #"closepath"
-    #"flattenpath"
-    #"reversepath"
-    #"strokepath"
-    #"ustrokepath"
-    #"charpath"
-    #"uappend"
-    #"clippath"
-    #"setbbox"
-    #"pathbbox"
-    #"pathforall"
-    #"upath"
-    #"initclip"
-    #"clip"
-    #"eoclip"
-    #"rectclip"
-    #"ucache"
-
-    ;; Painting Operators
-    #"erasepage"
-    #"fill"
-    #"eofill"
-    #"stroke"
-    #"ufill"
-    #"ueofill"
-    #"ustroke"
-    #"rectfill"
-    #"rectstroke"
-    #"image"
-    #"colorimage"
-    #"imagemask"
-
-    ;; Insideness Testing Operators
-    #"infill"
-    #"ineofill"
-    #"inufill"
-    #"inueofill"
-    #"instroke"
-    #"inustroke"
-
-    ;; Form and Pattern Operators
-    #"makepattern"
-    #"setpattern"
-    #"execform"
-
-    ;; Device Setup and Output Operators
-    #"showpage"
-    #"copypage"
-    #"setpagedevice"
-    #"currentpagedevice"
-    #"nulldevice"
-
-    ;; Character and Font Operators
-    #"definefont"
-    #"undefinefont"
-    #"findfont"
-    #"scalefont"
-    #"makefont"
-    #"setfont"
-    #"currentfont"
-    #"rootfont"
-    #"selectfont"
-    #"show"
-    #"ashow"
-    #"widthshow"
-    #"awidthshow"
-    #"xshow"
-    #"xyshow"
-    #"yshow"
-    #"glyphshow"
-    #"stringwidth"
-    #"cshow"
-    #"kshow"
-    #"FontDirectory"
-    #"GlobalFontDirectory"
-    #"StandardEncoding"
-    #"ISOLatinEncoding"
-    #"findencoding"
-    #"setcachedevice"
-    #"setcachedevice2"
-    #"setcharwidth"
-
-    ;; Interpreter Parameter Operators
-    #"setsystemparams"
-    #"currentsystemparams"
-    #"setuserparams"
-    #"currentuserparams"
-    #"setdevparams"
-    #"currentdevparams"
-    #"vmreclaim"
-    #"setvmthreshold"
-    #"vmstatus"
-    #"cachestatus"
-    #"setcachelimit"
-    #"setcacheparams"
-    #"currentcacheparams"
-    #"setucacheparams"
-    #"ucachestatus"
-
-    ;; Display PostScript Operators
-    ;; currentcontext, fork, join, detach, lock, monitor,
-    ;; condition, wait, notify, yield, defineusername,
-    ;; viewclip, eoviewclip, rectviewclip, initviewclip,
-    ;; viewclippath, deviceinfo, wtranslation,
-    ;; sethalftonephase, currenthalftonephase
-
-    ;; Errors
-    #"handleerror"
-    ;; configurationerror, dictfull, dictstackoverflow, dictstackunderflow,
-    ;; execstackoverflow, interrupt, invalidaccess, invalidcontext, invalidexit,
-    ;; invalidfileaccess, invalidfont, invalidid, invalidrestore, ioerror,
-    ;; limitcheck, nocurrentpoint, rangecheck, stackoverflow, stackunderflow,
-    ;; syntaxerror, timeout, typecheck, undefined, undefinedfilename,
-    ;; undefinedresource, undefinedresult, unmatchedmark, unregistered,
-    ;; VMerror
-    ))
     
 ;;;# INTERPRETER
 
@@ -427,12 +20,16 @@
     :accessor graphics-state-stack
     :initform '())))
 
+(defclass pfa-interpreter (interpreter)
+  ((%fontdefinedp
+    :accessor font-defined-p
+    :initform nil)))
+
 (defparameter *interpreter* nil)
 
 (defun lookup (name)
-  (loop with bytes = (object-value name)
-	for dict in (dictionary-stack *interpreter*)
-	for value = (gethash bytes (object-value dict))
+  (loop for dict in (dictionary-stack *interpreter*)
+	for value = (dict-get dict name)
 	when value
 	  do (return value)
 	finally (error "Undefined: ~A" name)))
@@ -444,16 +41,16 @@
 (defparameter *userdict* (make-ps-dictionary))
 
 (defun make-interpreter ()
-  (serapeum:lret ((interpreter (make-instance 'interpreter)))
+  (serapeum:lret ((interpreter (make-instance 'pfa-interpreter)))
     (push *systemdict* (dictionary-stack interpreter))
     (push *globaldict* (dictionary-stack interpreter))
     (push *userdict* (dictionary-stack interpreter))
-    (dict-def *systemdict* #"true" +true+)
-    (dict-def *systemdict* #"false" +false+)
-    (dict-def *systemdict* #"systemdict" *systemdict*)
-    (dict-def *systemdict* #"globaldict" *globaldict*)
-    (dict-def *systemdict* #"userdict" *userdict*)
-    (dict-def *systemdict* #"exit" :exit)))
+    (dict-def *systemdict* (make-name #"true" t) +true+)
+    (dict-def *systemdict* (make-name #"false" t) +false+)
+    (dict-def *systemdict* (make-name #"systemdict" t) *systemdict*)
+    (dict-def *systemdict* (make-name #"globaldict" t) *globaldict*)
+    (dict-def *systemdict* (make-name #"userdict" t) *userdict*)
+    (dict-def *systemdict* (make-name #"FontDirectory" t) (make-ps-dictionary))))
 
 (defclass looping-context ()
   ((%proc
@@ -492,7 +89,7 @@
 (eval-when (:compile-toplevel :load-toplevel :execute)
 (defmacro defoperator (name &body body)
   `(dict-def
-    *systemdict* ,name
+    *systemdict* (make-name ,name t)
     (make-instance
      'ps-operator
      :value ,name
@@ -584,6 +181,14 @@
 	when (null operand-stack)
 	  do (error "Unmatchedmark")))
 
+(defoperator #"closefile"
+  (stackunderflow 1)
+  (unless (streamp (nth 0 operand-stack))
+    (error "Typecheck"))
+  (let ((stream (pop operand-stack))) ;; FIXME
+    (setf execution-stack (remove stream execution-stack))
+    (close stream)))
+
 (defoperator #"copy"
   (stackunderflow 2)
   (if (typep (first operand-stack) 'ps-integer)
@@ -639,7 +244,7 @@
 
 (defgeneric convert-to-string (thing)
   (:method ((thing ps-object))
-    #"--nostring-val")
+    nil)
   (:method ((thing ps-boolean))
     (latin1-octets (object-value thing)))
   (:method ((thing ps-string))
@@ -656,7 +261,7 @@
   (typecheck ps-string ps-object)
   (let ((string (pop operand-stack))
 	(any (pop operand-stack)))
-    (let ((repr (convert-to-string any)))
+    (let ((repr (or (convert-to-string any) #"--nostringval--")))
       (unless (>= (length repr) (length string)) ;; FIXME do we bother?
 	(error "Rangecheck"))
       (setf (object-value string) repr)
@@ -671,6 +276,15 @@
   (let ((value (pop operand-stack))
 	(key (pop operand-stack)))
     (dict-def (first dictionary-stack) key value)))
+
+(defoperator #"definefont"
+  (stackunderflow 2)
+  (typecheck ps-dictionary)
+  ;; only for font definition files
+  (let ((font (pop operand-stack))
+	(key (pop operand-stack)))
+    (dict-def (lookup #"FontDirectory") key font)
+    (setf (font-defined-p *interpreter*) t)))
 
 (defoperator #"dict"
   (stackunderflow 1)
@@ -688,9 +302,22 @@
 
 (defoperator #"dup"
   (stackunderflow 1)
-  (push (first operand-stack) operand-stack))
+  (push (first operand-stack) operand-stack)) ;; FIXME really should duplicate
 
-;; eexec
+(defoperator #"eexec"
+  (stackunderflow 1)
+  (let ((source (pop operand-stack)))
+    (cond ((streamp source)
+	   ;;(read-byte source)
+	   (let ((eexec-stream (make-eexec-stream source)))
+	     (push eexec-stream execution-stack)
+	     (push *systemdict* dictionary-stack)))
+	  ((typep source 'ps-string)
+	   (let ((string-stream (make-octet-vector-stream (object-value source))))
+	     (push (make-eexec-stream string-stream) execution-stack)
+	     (push *systemdict* dictionary-stack)))
+	  (t
+	   (error "Typecheck")))))
 
 (defoperator #"end"
   (when (eq *userdict* (first dictionary-stack))
@@ -714,7 +341,7 @@
   (setf (object-access (first operand-stack)) :execute-only))
 
 (defoperator #"exit"
-  (let ((lc (find 'looping-context execution-stack :key #'type-of)))
+  (let ((lc (find-if (lambda (item) (typep item 'looping-context)) execution-stack)))
     (unless lc
       (error "Invalidexit"))
     (loop for item = (pop execution-stack)
@@ -755,28 +382,23 @@
 	       (nth index (object-value object)))))
 	  ((typep object 'ps-dictionary)
 	   (multiple-value-bind (value found)
-	       (gethash key (object-value object))
+	       (dict-get object key)
 	     (if found
 		 (push value operand-stack)
 		 (error "Undefined"))))
 	  (t (error "Typecheck")))))
 
-;; NP
-;; internaldict***
-;; startlock startlck
-;; definefont
-
 (defoperator #"if"
   (stackunderflow 2)
-  (typecheck ps-procedure ps-boolean)
-  (let ((bool (pop operand-stack))
-	(proc (pop operand-stack)))
+  (typecheck ps-boolean ps-procedure)
+  (let ((proc (pop operand-stack))
+	(bool (pop operand-stack)))
     (if (eq +true+ bool)
 	(push proc execution-stack))))
 
 (defoperator #"ifelse"
   (stackunderflow 3)
-  (typecheck ps-procedure ps-procedure ps-boolean)
+  (typecheck ps-boolean ps-procedure ps-procedure)
   (let ((proc2 (pop operand-stack))
 	(proc1 (pop operand-stack))
 	(bool (pop operand-stack)))
@@ -790,11 +412,11 @@
   (let* ((n (pop operand-stack))
 	 (n-value (object-value n)))
     (when (or (minusp n-value)
-	      (>= (length operand-stack) n-value))
+	      (>= n-value (length operand-stack)))
       (error "Rangecheck"))
     (push (nth n-value operand-stack) operand-stack)))
 
-(defoperator #"internaldict"
+#+(or)(defoperator #"internaldict"
   (stackunderflow 1)
   (let ((int (pop operand-stack)))
     (unless (and (typep int 'ps-integer)
@@ -808,7 +430,7 @@
   (let ((key (pop operand-stack))
 	(dict (pop operand-stack)))
     (multiple-value-bind (value found)
-	(gethash key (object-value dict))
+	(dict-get dict key)
       (declare (ignore value))
       (if found
 	  (push +true+ operand-stack)
@@ -825,7 +447,7 @@
 	       (push +false+ operand-stack)))
 	  ((and (typep object1 'ps-string)
 		(typep object2 'ps-string))
-	   (if (octets< (object-value operand1) (object-value object2)) ;; FIXME implement this
+	   (if (octets< (object-value object1) (object-value object2)) ;; FIXME implement this
 	       (push +true+ operand-stack)
 	       (push +false+ operand-stack)))
 	  (t (error "Typecheck")))))
@@ -846,7 +468,7 @@
 	(object (pop operand-stack)))
     (cond ((or (typep object 'ps-array)
 	       (typep object 'ps-string))
-	   (let ((length (length object)))
+	   (let ((length (length (object-value object))))
 	     (unless (typep key 'ps-integer)
 	       (error "Typecheck"))
 	     (let* ((index (object-value key)))
@@ -855,7 +477,7 @@
 	       (when (and (typep object 'ps-string)
 			  (not (typep value 'ps-integer)))
 		 (error "Typecheck"))
-	       (setf (nth index (object-value object)) value))))
+	       (setf (elt (object-value object) index) value))))
 	  ((typep object 'ps-dictionary)
 	   (dict-def object key value))
 	  (t (error "Typecheck")))))
@@ -864,6 +486,39 @@
   (stackunderflow 1)
   (typecheck ps-composite-object)
   (setf (object-access (first operand-stack)) :read-only))
+
+(defoperator #"readstring"
+  (stackunderflow 2)
+  (unless (and (streamp (nth 1 operand-stack))
+	       (typep (nth 0 operand-stack) 'ps-string))
+    (error "Typecheck"))
+  (let* ((string (pop operand-stack))
+	 (file (pop operand-stack))
+	 (value (object-value string))
+	 (length (length value))
+	 (eof nil))
+    (read-byte file nil)
+    (loop for index below length
+	  for byte = (read-byte file nil)
+	  while byte
+	  do (setf (aref value index) byte)
+	  finally (unless byte
+		    (setf (fill-pointer value) index
+			  eof t)))
+    (push string operand-stack)
+    (push (if eof +false+ +true+) operand-stack)))
+
+(defoperator #"string"
+  (stackunderflow 1)
+  (typecheck ps-integer)
+  (let ((length (object-value (pop operand-stack))))
+    (unless (plusp length)
+      (error "Rangecheck"))
+    (let ((string (make-instance 'ps-string
+				 :value (make-array length
+						    :element-type '(unsigned-byte 8)
+						    :initial-element 0))))
+      (push string operand-stack))))
 
 ;;;# NEXT OBJECT
 
@@ -898,15 +553,15 @@
 (defun literalp (object)
   (not (object-executable-p object)))
 
-(defun interpret ()
+(defun interpret-pfa ()
   (with-accessors ((operand-stack operand-stack)
-		   (dictionary-stack dictionary-stack)
 		   (execution-stack execution-stack)
-		   (graphics-state-stack graphics-state-stack))
+		   (font-defined-p font-defined-p))
       *interpreter*	
     (loop for object = (next-object)
 	  while object
-	  do (dump-stack)
+	  until font-defined-p
+	  do (dump-stack) ;; DEBUG
 	     (cond
 	       ((typep object 'looping-context)
 		(update-looping-context object))
@@ -919,24 +574,37 @@
 		    ((typep value 'ps-operator)
 		     (funcall (operator-function value)))
 		    ((and (typep value 'ps-object)
+			  (not (literalp value)))
+		     (push value execution-stack))
+		    ((and (typep value 'ps-object)
 			  (literalp value))
 		     (push value operand-stack))
 		    (t (warn "Unhandled value: ~A" object)))))
 	       ((typep object 'ps-procedure)
 		(push object operand-stack)) ;; because at top level
-	       (t (warn "Unhandled object: ~A" object))))))
+	       (t (warn "Unhandled object: ~A" object)))
+	  finally (return (lookup #"FontDirectory")))))
 
 (defun interpret-file (pathname)
   (with-input-from-octet-file (s pathname)
     (let ((*interpreter* (make-interpreter)))
       (push s (execution-stack *interpreter*))
-      (interpret))))
+      (interpret-pfa))))
 
 (defun interpret-octets (octets)
   (with-input-from-octet-vector (s octets)
     (let ((*interpreter* (make-interpreter)))
       (push s (execution-stack *interpreter*))
-      (interpret))))
+      (interpret-pfa))))
 
 (defun dump-stack ()
-  (format t "~%<~{ ~A ~}>" (mapcar 'type-of (operand-stack *interpreter*))))
+  (format t "~%<~{ ~A ~}>"
+	  (mapcar
+	   (lambda (item)
+	     (if (typep item 'ps-object)
+		 (alexandria:if-let ((octets (convert-to-string item)))
+		   (octets-latin1 octets)
+		   (type-of item))
+		 (type-of item)))
+	   (operand-stack *interpreter*))))
+

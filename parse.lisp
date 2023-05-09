@@ -38,6 +38,9 @@
 (defclass ps-name (ps-simple-object)
   ())
 
+(defun make-name (bytes &optional executablep)
+  (make-instance 'ps-name :value bytes :executablep executablep))
+
 (defmethod print-object ((object ps-name) stream)
   (print-unreadable-object (object stream :type t :identity t)
     (alexandria:when-let ((value (object-value object)))
@@ -112,7 +115,14 @@
   (make-instance 'ps-dictionary :value (make-hash-table :test 'equalp)))
 
 (defun dict-def (dictionary key value)
+  (when (typep key 'ps-name)
+    (setf key (object-value key)))
   (setf (gethash key (object-value dictionary)) value))
+
+(defun dict-get (dictionary key)
+  (when (typep key 'ps-name)
+    (setf key (object-value key)))
+  (gethash key (object-value dictionary)))
 
 (defclass ps-string (ps-composite-object)
   ()
@@ -184,7 +194,7 @@
 	   (eat-char #!<)
 	   (let ((next (peek-byte *ps-stream*)))
 	     (case next
-	       (#!< (eat-char #!<) (make-instance 'ps-name :value #"<<" :executablep t))
+	       (#!< (eat-char #!<) (make-name #"<<" t))
 	       (#!~ (read-ascii85-string t))
 	       (otherwise
 		(read-hexadecimal-string t)))))
@@ -193,13 +203,13 @@
 	   (let ((next (peek-byte *ps-stream*)))
 	     (if (eql #!> next)
 		 (progn (eat-char #!>)
-			(make-instance 'ps-name :value #">>" :executablep t))
-		 (make-instance 'ps-name :value (serapeum:vect char)))))
+			(make-name #">>" t))
+		 (make-name (serapeum:vect char)))))
 	  ((= #!{ char)
 	   (read-procedure))
 	  ((delimiterp char)
 	   (eat-char char)
-	   (make-instance 'ps-name :value (serapeum:vect char) :executablep t))
+	   (make-name (serapeum:vect char) t))
 	  (t
 	   (read-name-or-number)))))
 
@@ -309,7 +319,7 @@
 	  until (eq :eof char)
 	  while (regular-character-p char)
 	  do (vector-push-extend (read-byte *ps-stream*) chars))
-    (make-instance 'ps-name :value chars :executablep executablep)))
+    (make-name chars executablep)))
 
 (defun read-name-or-number ()
   (let ((octets (serapeum:vect)))
@@ -354,7 +364,15 @@
     :accessor eexec-stream-r
     :initform +eexec-key+)))
 
-(defun eexec-decrypt-byte (stream)
+(defclass binary-eexec-stream (eexec-stream)
+  ())
+
+(defclass asciihex-eexec-stream (eexec-stream)
+  ())
+
+(defgeneric eexec-decrypt-byte (stream))
+
+(defmethod eexec-decrypt-byte ((stream binary-eexec-stream))
   (with-accessors ((R eexec-stream-r) (bs eexec-stream-base-stream)) stream
     (let ((byte (read-byte bs)))
       (if (eq :eof byte)
@@ -365,6 +383,26 @@
 				  +crypt-c1+))
 			    #xFFFF)))))))
 
+(defmethod eexec-decrypt-byte ((stream asciihex-eexec-stream))
+  (with-accessors ((R eexec-stream-r) (bs eexec-stream-base-stream)) stream
+    (flet ((next-byte () (loop for byte = (read-byte bs)
+			       until (eq :eof byte)
+			       while (white-space-p byte)
+			       finally (return byte))))
+      (let ((byte1 (next-byte))
+	    (byte2 (next-byte)))
+	(if (eq :eof byte1)
+	    :eof
+	    (let ((byte (if (eq :eof byte2)
+			    (ash (digit-octet-p byte1 16) 4) 
+			    (+ (ash (digit-octet-p byte1 16) 4)
+			       (digit-octet-p byte2 16)))))
+	      (prog1 (logxor byte (ldb (byte 8 8) R))
+		(setf R (logand (+ +crypt-c2+
+				   (* (+ byte R)
+				      +crypt-c1+))
+				#xFFFF)))))))))
+      
 (defmethod initialize-instance :after ((stream eexec-stream) &key)
   (setf (peeked-byte stream)
 	(eexec-decrypt-byte stream)))
@@ -408,8 +446,18 @@
 	finally (return octet)))
 
 (defun make-eexec-stream (base-stream &optional (skip 4))
-  (serapeum:lret ((es (make-instance 'eexec-stream :base base-stream)))
-    (loop repeat skip do (read-byte es))))
+  (let ((fp (file-position base-stream))
+	(five (make-array 5 :element-type '(unsigned-byte 8))))
+    (read-sequence five base-stream)
+    (let ((class (if (every (lambda (byte)
+			      (or (white-space-p byte)
+				  (digit-octet-p byte 16)))
+			    five)
+		     'asciihex-eexec-stream
+		     'binary-eexec-stream)))
+      (file-position base-stream fp)
+      (serapeum:lret ((es (make-instance class :base base-stream)))
+	(loop repeat skip do (read-byte es))))))
 
 (defconstant +crypt-c1+ 52845)
 (defconstant +crypt-c2+ 22719)
@@ -458,6 +506,19 @@
 	do (vector-push-extend byte bytes)
 	finally (return (octets-latin1 (decrypt-eexec bytes)))))
 
+(defun extract-eexec (file &optional (count 1000))
+  (with-input-from-octet-file (*ps-stream* file)
+    (loop with eexec = (make-name #"eexec")
+	  with closefile = (make-name #"closefile")
+	  for obj = (read-object nil)
+	  until (eq :eof obj)
+	  when (and (typep obj 'ps-name)
+		    (nameql eexec obj))
+	    do (read-byte *ps-stream*)
+	       (princ (eexec-test count))
+	       (loop-finish))))
+  
+
 (defun skip-to-nd (stream)
   (loop for byte = (read-byte stream nil)
 	and prev = nil then byte
@@ -471,10 +532,10 @@
     (read-type1-charstring s)))
 
 (defun test ()
-  (with-input-from-octet-file (*ps-stream* "c:/Users/David/Downloads/urw-base35-fonts-20200910/urw-base35-fonts-20200910/fonts/StandardSymbolsPS.t1")
-    (loop with eexec = (make-instance 'ps-name :value #"eexec")
-	  with RD = (make-instance 'ps-name :value #"RD")
-	  with closefile = (make-instance 'ps-name :value #"closefile")
+  (with-input-from-octet-file (*ps-stream* "c:/Users/David/Downloads/urw-base35-fonts-20200910/fonts/StandardSymbolsPS.t1")
+    (loop with eexec = (make-name #"eexec")
+	  with RD = (make-name #"RD")
+	  with closefile = (make-name #"closefile")
 	  with glyphs = '()
 	  for obj = (read-object nil)
 	  until (eq :eof obj)
