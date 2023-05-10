@@ -353,14 +353,65 @@
     (with-input-from-octet-vector (*ps-stream* octets)
       (read-name))))
 
-(defclass eexec-stream (trivial-gray-streams:fundamental-binary-input-stream)
+;;;# DECODING STREAM
+
+(defclass decoding-stream (trivial-gray-streams:fundamental-binary-input-stream)
   ((%base-stream
     :initarg :base
-    :accessor eexec-stream-base-stream)
+    :accessor decoding-stream-base-stream)
    (%peeked-byte
     :accessor peeked-byte
-    :initform nil)
-   (%r
+    :initform nil)))
+
+(defgeneric decode-next-byte (stream))
+      
+(defmethod initialize-instance :after ((stream decoding-stream) &key)
+  (setf (peeked-byte stream)
+	(decode-next-byte stream)))
+
+(defmethod trivial-gray-streams:stream-read-byte ((stream decoding-stream))
+  (unless (open-stream-p stream)
+    (error 'stream-error :stream stream))
+  (shiftf (peeked-byte stream)
+	  (decode-next-byte stream)))
+
+(defmethod trivial-gray-streams:stream-listen ((stream decoding-stream))
+  (unless (open-stream-p stream)
+    (error 'stream-error :stream stream))
+  (not (eq :eof (peeked-byte stream))))
+
+(defmethod trivial-gray-streams:stream-read-sequence ((stream decoding-stream) sequence start end &key)
+  (loop for index from start below end
+	for char = (read-byte stream nil :eof)
+	until (eq :eof char)
+	do (setf (elt sequence index) char)
+	finally (return index)))
+
+(defmethod trivial-gray-streams:stream-file-position ((stream decoding-stream))
+  (file-position (decoding-stream-base-stream stream)))
+
+#+(or) ;; DECODING-STREAMS are stateful, we can't just bounce around them
+(defmethod (setf trivial-gray-streams:stream-file-position) (position-spec (stream decoding-stream))
+  (unless (integerp position-spec) (error 'stream-error :stream stream))
+  (file-position (decoding-stream-base-stream stream) position-spec)
+  (setf (peeked-byte stream) (decode-next-byte stream))
+  position-spec)
+
+(defmethod peek-byte ((stream decoding-stream) &optional peek-type eof-error-p eof-value)
+  (loop for octet = (peeked-byte stream)
+	until (cond ((eq :eof octet)
+		     (return eof-value))
+		    ((null peek-type))
+		    ((eq t peek-type)
+		     (not (white-space-p octet)))
+		    ((= octet peek-type)))
+	do (read-byte stream eof-error-p :eof)
+	finally (return octet)))
+
+;;;# EEXEC-STREAM
+
+(defclass eexec-stream (decoding-stream)
+  ((%r
     :accessor eexec-stream-r
     :initform +eexec-key+)))
 
@@ -370,10 +421,8 @@
 (defclass asciihex-eexec-stream (eexec-stream)
   ())
 
-(defgeneric eexec-decrypt-byte (stream))
-
-(defmethod eexec-decrypt-byte ((stream binary-eexec-stream))
-  (with-accessors ((R eexec-stream-r) (bs eexec-stream-base-stream)) stream
+(defmethod decode-next-byte ((stream binary-eexec-stream))
+  (with-accessors ((R eexec-stream-r) (bs decoding-stream-base-stream)) stream
     (let ((byte (read-byte bs)))
       (if (eq :eof byte)
 	  :eof
@@ -383,8 +432,8 @@
 				  +crypt-c1+))
 			    #xFFFF)))))))
 
-(defmethod eexec-decrypt-byte ((stream asciihex-eexec-stream))
-  (with-accessors ((R eexec-stream-r) (bs eexec-stream-base-stream)) stream
+(defmethod decode-next-byte ((stream asciihex-eexec-stream))
+  (with-accessors ((R eexec-stream-r) (bs decoding-stream-base-stream)) stream
     (flet ((next-byte () (loop for byte = (read-byte bs)
 			       until (eq :eof byte)
 			       while (white-space-p byte)
@@ -402,50 +451,10 @@
 				   (* (+ byte R)
 				      +crypt-c1+))
 				#xFFFF)))))))))
-      
-(defmethod initialize-instance :after ((stream eexec-stream) &key)
-  (setf (peeked-byte stream)
-	(eexec-decrypt-byte stream)))
 
-(defmethod trivial-gray-streams:stream-read-byte ((stream eexec-stream))
-  (unless (open-stream-p stream)
-    (error 'stream-error :stream stream))
-  (shiftf (peeked-byte stream)
-	  (eexec-decrypt-byte stream)))
+(defgeneric make-eexec-stream (base-stream &optional skip))
 
-(defmethod trivial-gray-streams:stream-listen ((stream eexec-stream))
-  (unless (open-stream-p stream)
-    (error 'stream-error :stream stream))
-  (not (eq :eof (peeked-byte stream))))
-
-(defmethod trivial-gray-streams:stream-read-sequence ((stream eexec-stream) sequence start end &key)
-  (loop for index from start below end
-	for char = (read-byte stream nil :eof)
-	until (eq :eof char)
-	do (setf (elt sequence index) char)
-	finally (return index)))
-
-(defmethod trivial-gray-streams:stream-file-position ((stream eexec-stream))
-  (file-position (eexec-stream-base-stream stream)))
-
-(defmethod (setf trivial-gray-streams:stream-file-position) (position-spec (stream eexec-stream))
-  (unless (integerp position-spec) (error 'stream-error :stream stream))
-  (file-position (eexec-stream-base-stream stream) position-spec)
-  (setf (peeked-byte stream) (eexec-decrypt-byte stream))
-  position-spec)
-
-(defmethod peek-byte ((stream eexec-stream) &optional peek-type eof-error-p eof-value)
-  (loop for octet = (peeked-byte stream)
-	until (cond ((eq :eof octet)
-		     (return eof-value))
-		    ((null peek-type))
-		    ((eq t peek-type)
-		     (not (white-space-p octet)))
-		    ((= octet peek-type)))
-	do (read-byte stream eof-error-p :eof)
-	finally (return octet)))
-
-(defun make-eexec-stream (base-stream &optional (skip 4))
+(defmethod make-eexec-stream (base-stream &optional (skip 4))
   (let ((fp (file-position base-stream))
 	(five (make-array 5 :element-type '(unsigned-byte 8))))
     (read-sequence five base-stream)
@@ -463,6 +472,67 @@
 (defconstant +crypt-c2+ 22719)
 (defconstant +eexec-key+ 55665)
 (defconstant +charstring-key+ 4330)
+
+;;;# PFB-STREAM
+
+(defconstant +pfb-marker+ 128)
+(defconstant +pfb-ascii+ 1)
+(defconstant +pfb-binary+ 2)
+(defconstant +pfb-done+ 3)
+
+(defclass pfb-stream (decoding-stream)
+  ((%block-type
+    :accessor block-type
+    :initform 0)
+   (%block-length
+    :initform 0
+    :accessor block-length)
+   (%bytes-seen
+    :accessor bytes-seen
+    :initform 0)))
+
+(defmethod decode-next-byte ((stream pfb-stream))
+  (cond ((= +pfb-done+ (block-type stream))
+	 :eof)
+	((= (bytes-seen stream) (block-length stream))
+	 (multiple-value-bind (block-type block-length)
+	     (pfb-read-block-header (decoding-stream-base-stream stream))
+	   (setf (block-type stream) block-type
+		 (block-length stream) block-length
+		 (bytes-seen stream) 0)
+	   (decode-next-byte stream)))
+	(t (incf (bytes-seen stream)) 
+	   (read-byte (decoding-stream-base-stream stream)))))
+
+(defun pfb-read-block-header (stream)
+  (let ((marker (read-byte stream))
+	(block-type (read-byte stream))
+	(block-length 0))
+    (unless (= +pfb-marker+ marker)
+      (error "Malformed .PFB file: wanted 128, saw ~D" marker))
+    (unless (eq +pfb-done+ block-type)
+      (loop repeat 4
+	    for shift from 0
+	    for byte = (read-byte stream)
+	    do (incf block-length (ash byte (* shift 8)))))
+    (values block-type block-length)))
+
+(defun make-pfb-stream (base-stream)
+  (make-instance 'pfb-stream :base base-stream))
+
+(defmethod make-eexec-stream ((base-stream pfb-stream) &optional (skip 4))
+  (read-byte base-stream) ;; FIXME hack to prime the next, presumably binary, block
+  (let ((class (cond 
+		 ((= +pfb-ascii+ (block-type base-stream))
+		  'asciihex-eexec-stream)
+		 ((= +pfb-binary+ (block-type base-stream))
+		  'binary-eexec-stream)
+		 (t (error "Unsuitable .PFB block-type for eexec-stream: ~A"
+			   (block-type base-stream))))))
+    (serapeum:lret ((es (make-instance class :base base-stream)))
+      (loop repeat skip do (read-byte es)))))
+
+;;;# TESTING
 
 (defun decrypt-bytes (bytes key skip)
   (let ((R key)
@@ -516,8 +586,7 @@
 		    (nameql eexec obj))
 	    do (read-byte *ps-stream*)
 	       (princ (eexec-test count))
-	       (loop-finish))))
-  
+	       (loop-finish))))  
 
 (defun skip-to-nd (stream)
   (loop for byte = (read-byte stream nil)
@@ -554,3 +623,16 @@
 			 do (push (test-charstring (skip-to-nd *ps-stream*)) glyphs)
 		       else do (print obj)))
 	  finally (return glyphs))))
+
+(defun pfb-blocks (file)
+  (with-input-from-octet-file (s file)
+    (loop (multiple-value-bind (type length)
+	      (pfb-read-block-header s)
+	    (print type)
+	    (when (= +pfb-done+ type)
+	      (return))
+	    (print length)
+	    (let ((stuff (make-array length)))
+	      (read-sequence stuff s)
+	      (when (= +pfb-ascii+ type)
+		(print (octets-latin1 stuff))))))))

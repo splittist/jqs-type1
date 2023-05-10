@@ -40,6 +40,102 @@
 
 (defparameter *userdict* (make-ps-dictionary))
 
+(defparameter *standard-encoding*
+  #(#".notdef" #".notdef" #".notdef" #".notdef" #".notdef" #".notdef" #".notdef" #".notdef"
+    #".notdef" #".notdef" #".notdef" #".notdef" #".notdef" #".notdef" #".notdef" #".notdef"
+    #".notdef" #".notdef" #".notdef" #".notdef" #".notdef" #".notdef" #".notdef" #".notdef"
+    #".notdef" #".notdef" #".notdef" #".notdef" #".notdef" #".notdef" #".notdef" #".notdef"
+    #"space" #"exclam" #"quotedbl" #"numbersign"
+    #"dollar" #"percent" #"ampersand" #"quoteright"
+    #"parenleft" #"parenright" #"asterisk" #"plus"
+    #"comma" #"hyphen" #"period" #"slash"
+    #"zero" #"one" #"two" #"three"
+    #"four" #"five" #"six" #"seven"
+    #"eight" #"nine" #"colon" #"semicolon"
+    #"less" #"equal" #"greater" #"question"
+    #"at" #"A" #"B" #"C" #"D" #"E" #"F" #"G"
+    #"H" #"I" #"J" #"K" #"L" #"M" #"N" #"O"
+    #"P" #"Q" #"R" #"S" #"T" #"U" #"V" #"W"
+    #"X" #"Y" #"Z" #"bracketleft" #"backslash" #"bracketright" #"asciicircum" #"underscore"
+    #"quoteleft" #"a" #"b" #"c" #"d" #"e" #"f" #"g"
+    #"h" #"i" #"j" #"k" #"l" #"m" #"n" #"o"
+    #"p" #"q" #"r" #"s" #"t" #"u" #"v" #"w"
+    #"x" #"y" #"z" #"braceleft" #"bar" #"braceright" #"asciitilde" #".notdef"
+    #".notdef" #".notdef" #".notdef" #".notdef" #".notdef" #".notdef" #".notdef" #".notdef"
+    #".notdef" #".notdef" #".notdef" #".notdef" #".notdef" #".notdef" #".notdef" #".notdef"
+    #".notdef" #".notdef" #".notdef" #".notdef" #".notdef" #".notdef" #".notdef" #".notdef"
+    #".notdef" #".notdef" #".notdef" #".notdef" #".notdef" #".notdef" #".notdef" #".notdef"
+    #".notdef" #"exclamdown" #"cent" #"sterling"
+    #"fraction" #"yen" #"florin" #"section"
+    #"currency" #"quotesingle" #"quotedblleft" #"guillemotleft"
+    #"guilsinglleft" #"guilsinglright" #"fi" #"fl"
+    #".notdef" #"endash" #"dagger" #"daggerdbl"
+    #"periodcentered" #".notdef" #"paragraph" #"bullet"
+    #"quotesinglbase" #"quotedblbase" #"quotedblright" #"guillemotright"
+    #"ellipsis" #"perthousand" #".notdef" #"questiondown"
+    #".notdef" #"grave" #"acute" #"circumflex" #"tilde" #"macron" #"breve" #"dotaccent"
+    #"dieresis" #".notdef" #"ring" #"cedilla" #".notdef" #"hungarumlaut" #"ogonek" #"caron"
+    #"emdash" #".notdef" #".notdef" #".notdef" #".notdef" #".notdef" #".notdef" #".notdef"
+    #".notdef" #".notdef" #".notdef" #".notdef" #".notdef" #".notdef" #".notdef" #".notdef"
+    #".notdef" #"AE" #".notdef" #"ordfeminine" #".notdef" #".notdef" #".notdef" #".notdef"
+    #"Lslash" #"Oslash" #"OE" #"ordmasculine" #".notdef" #".notdef" #".notdef" #".notdef"
+    #".notdef" #"ae" #".notdef" #".notdef" #".notdef" #"dotlessi" #".notdef" #".notdef"
+    #"lslash" #"oslash" #"oe" #"germandbls" #".notdef" #".notdef" #".notdef" #".notdef"))
+
+(defparameter *iso-latin1-encoding*
+  #(#".notdef" #".notdef" #".notdef" #".notdef" #".notdef" #".notdef" #".notdef" #".notdef"
+    #".notdef" #".notdef" #".notdef" #".notdef" #".notdef" #".notdef" #".notdef" #".notdef"
+    #".notdef" #".notdef" #".notdef" #".notdef" #".notdef" #".notdef" #".notdef" #".notdef"
+    #".notdef" #".notdef" #".notdef" #".notdef" #".notdef" #".notdef" #".notdef" #".notdef"
+    #"space" #"exclam" #"quotedbl" #"numbersign"
+    #"dollar" #"percent" #"ampersand" #"quoteright"
+    #"parenleft" #"parenright" #"asterisk" #"plus"
+    #"comma" #"minus" #"period" #"slash"
+    #"zero" #"one" #"two" #"three"
+    #"four" #"five" #"six" #"seven"
+    #"eight" #"nine" #"colon" #"semicolon"
+    #"less" #"equal" #"greater" #"question"
+    #"at" #"A" #"B" #"C" #"D" #"E" #"F" #"G"
+    #"H" #"I" #"J" #"K" #"L" #"M" #"N" #"O"
+    #"P" #"Q" #"R" #"S" #"T" #"U" #"V" #"W"
+    #"X" #"Y" #"Z" #"bracketleft" #"backslash" #"bracketright" #"asciicircum" #"underscore"
+    #"quoteleft" #"a" #"b" #"c" #"d" #"e" #"f" #"g"
+    #"h" #"i" #"j" #"k" #"l" #"m" #"n" #"o"
+    #"p" #"q" #"r" #"s" #"t" #"u" #"v" #"w"
+    #"x" #"y" #"z" #"braceleft" #"bar" #"braceright" #"asciitilde" #".notdef"
+    #".notdef" #".notdef" #".notdef" #".notdef" #".notdef" #".notdef" #".notdef" #".notdef"
+    #".notdef" #".notdef" #".notdef" #".notdef" #".notdef" #".notdef" #".notdef" #".notdef"
+    #"dotlessi" #"grave" #"acute" #"circumflex" #"tilde" #"macron" #"breve" #"dotaccent"
+    #"dieresis" #".notdef" #"ring" #"cedilla" #".notdef" #"hungarumlaut" #"ogonek" #"caron"
+    #"space" #"exclamdown" #"cent" #"sterling"
+    #"currency" #"yen" #"brokenbar" #"section"
+    #"dieresis" #"copyright" #"ordfeminine" #"guillemotleft"
+    #"logicalnot" #"hyphen" #"registered" #"macron"
+    #"degree" #"plusminus" #"twosuperior" #"threesuperior"
+    #"acute" #"mu" #"paragraph" #"periodcentered"
+    #"cedilla" #"onesuperior" #"ordmasculine" #"guillemotright"
+    #"onequarter" #"onehalf" #"threequarters" #"questiondown"
+    #"Agrave" #"Aacute" #"Acircumflex" #"Atilde"
+    #"Adieresis" #"Aring" #"AE" #"Ccedilla"
+    #"Egrave" #"Eacute" #"Ecircumflex" #"Edieresis"
+    #"Igrave" #"Iacute" #"Icircumflex" #"Idieresis"
+    #"Eth" #"Ntilde" #"Ograve" #"Oacute"
+    #"Ocircumflex" #"Otilde" #"Odieresis" #"multiply"
+    #"Oslash" #"Ugrave" #"Uacute" #"Ucircumflex"
+    #"Udieresis" #"Yacute" #"Thorn" #"germandbls"
+    #"agrave" #"aacute" #"acircumflex" #"atilde"
+    #"adieresis" #"aring" #"ae" #"ccedilla"
+    #"egrave" #"eacute" #"ecircumflex" #"edieresis"
+    #"igrave" #"iacute" #"icircumflex" #"idieresis"
+    #"eth" #"ntilde" #"ograve" #"oacute"
+    #"ocircumflex" #"otilde" #"odieresis" #"divide"
+    #"oslash" #"ugrave" #"uacute" #"ucircumflex"
+    #"udieresis" #"yacute" #"thorn" #"ydieresis"))
+
+(defun make-encoding-vector (vector-of-names)
+  (make-ps-array
+   (map 'list 'make-name vector-of-names)))
+
 (defun make-interpreter ()
   (serapeum:lret ((interpreter (make-instance 'pfa-interpreter)))
     (push *systemdict* (dictionary-stack interpreter))
@@ -50,7 +146,9 @@
     (dict-def *systemdict* (make-name #"systemdict" t) *systemdict*)
     (dict-def *systemdict* (make-name #"globaldict" t) *globaldict*)
     (dict-def *systemdict* (make-name #"userdict" t) *userdict*)
-    (dict-def *systemdict* (make-name #"FontDirectory" t) (make-ps-dictionary))))
+    (dict-def *systemdict* (make-name #"FontDirectory" t) (make-ps-dictionary))
+    (dict-def *systemdict* (make-name #"StandardEncoding" t) (make-encoding-vector *standard-encoding*))
+    (dict-def *systemdict* (make-name #"ISOLatin1Encoding" t) (make-encoding-vector *iso-latin1-encoding*))))
 
 (defclass looping-context ()
   ((%proc
@@ -561,14 +659,14 @@
     (loop for object = (next-object)
 	  while object
 	  until font-defined-p
-	  do (dump-stack) ;; DEBUG
+	  do ;; (dump-stack) ;; DEBUG
 	     (cond
 	       ((typep object 'looping-context)
 		(update-looping-context object))
 	       ((literalp object)
 		(push object operand-stack))
 	       ((typep object 'ps-name)
-		(format t "~%~A" (octets-latin1 (object-value object))) ;; DEBUG
+		;; (format t "~%~A" (octets-latin1 (object-value object))) ;; DEBUG
 		(let ((value (lookup object)))
 		  (cond
 		    ((typep value 'ps-operator)
@@ -587,6 +685,9 @@
 
 (defun interpret-file (pathname)
   (with-input-from-octet-file (s pathname)
+    (when (= +pfb-marker+ (peek-byte s))
+      (file-position s 0)
+      (setf s (make-pfb-stream s)))
     (let ((*interpreter* (make-interpreter)))
       (push s (execution-stack *interpreter*))
       (interpret-pfa))))
