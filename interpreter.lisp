@@ -708,4 +708,3 @@
 		   (type-of item))
 		 (type-of item)))
 	   (operand-stack *interpreter*))))
-

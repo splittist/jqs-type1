@@ -1244,14 +1244,15 @@
 (defun type1-callsubr ()
   (lambda ()
     (let ((subroutine (ps-pop)))
-      (type1-subroutine num))))
+      (type1-subroutine subroutine))))
 
 (defun type1-pop ()
   (lambda ()
     (ps-push (vector-pop (ps-postscript-stack))))) 
 
-#+(or)(defun type1-return ()
-  )
+(defun type1-return ()
+  (lambda ()
+    (values)))
 
 (defun type1-setcurrentpoint ()
   (lambda ()
@@ -1316,7 +1317,7 @@
 		      (setf (fill-pointer stack) 0)
 		      (type1-callsubr))
 		     (11 ;; return
-		      nil) ;; FIXME Nothing to do?
+		      (type1-return)) ;; FIXME Nothing to do?
 		     (12
 		      (let ((b1 (read-byte stream)))
 			(case b1

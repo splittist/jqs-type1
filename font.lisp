@@ -2,6 +2,31 @@
 
 (in-package #:com.splittist.type1)
 
+;;;# FONT
+
+(defclass font ()
+  ())
+
+(defgeneric glyph-count (font))
+
+(defgeneric italic-angle (font))
+
+(defgeneric underline-thickness (font))
+
+(defgeneric underline-positioni (font))
+
+(defgeneric fixed-pitch-p (font))
+
+(defgeneric full-name (font))
+
+(defgeneric family-name (font))
+
+(defgeneric weight (font))
+
+(defgeneric font-matrix (font))
+
+(defgeneric character-code-name (font character-code))
+
 ;;;# CFF
 
 (defun read-dict-real (stream)
@@ -591,34 +616,34 @@
 	(setf (cff-local-subrs font) (cff-read-index stream)))
     font)))
 
-(defun glyph-count (font)
+(defmethod glyph-count ((font cff-font))
   (cff-index-count (cff-charstrings font)))
 
-(defun italic-angle (font)
+(defmethod italic-angle ((font cff-font))
   (gethash :italic-angle (cff-top-dict font)))
 
-(defun underline-thickness (font)
+(defmethod underline-thickness ((font cff-font))
   (gethash :underline-thickness (cff-top-dict font)))
 
-(defun underline-position (font)
+(defmethod underline-position ((font cff-font))
   (gethash :underline-position (cff-top-dict font)))
 
-(defun fixed-pitch-p (font)
+(defmethod fixed-pitch-p ((font cff-font))
   (= 1 (gethash :is-fixed-pitch (cff-top-dict font))))
 
-(defun full-name (font)
+(defmethod full-name ((font cff-font))
   (alexandria:when-let ((sid (gethash :full-name (cff-top-dict font))))
     (sid-string font sid)))
 
-(defun family-name (font)
+(defmethod family-name ((font cff-font))
   (alexandria:when-let ((sid (gethash :family-name (cff-top-dict font))))
     (sid-string font sid)))
 
-(defun weight (font)
+(defmethod weight ((font cff-font))
   (alexandria:when-let ((sid (gethash :weight (cff-top-dict font))))
     (sid-string font sid)))
 
-(defun font-matrix (font)
+(defmethod font-matrix ((font cff-font))
   (gethash :font-matrix (cff-top-dict font)))
 
 (defgeneric bounding-box (thing)
@@ -628,7 +653,7 @@
 (defun character-index-glyph (font character-index)
   (cff-index-item (cff-charstrings font) character-index))
 
-(defun character-code-name (font character-code)
+(defmethod character-code-name ((font cff-font) character-code)
   (sid-string font (aref (cff-charsets font) (1- character-code))))
 
 (defun charstring-type (font)
@@ -642,59 +667,102 @@
 
 ;;;# TYPE 1
 
+(defclass pfa-font ()
+  ()) ;; file(s) ?
+
+(defmethod glyph-count ((font pfa-font))
+  (length (object-value (dict-get (font-dictionary font) #"CharStrings"))))
+
+(defmethod italic-angle ((font pfa-font))
+  (object-value (dict-get (dict-get (font-dictionary font) #"FontInfo") #"ItalicAngle")))
+
+(defmethod underline-thickness ((font pfa-font))
+  (object-value (dict-get (dict-get (font-dictionary font) #"FontInfo") #"UnderlineThickness")))
+
+(defmethod underline-position ((font pfa-font))
+  (object-value (dict-get (dict-get (font-dictionary font) #"FontInfo") #"UnderlinePosition")))
+
+(defmethod fixed-pitch-p ((font pfa-font))
+  (eq +true+ (dict-get (dict-get (font-dictionary font) #"FontInfo") #"isFixedPitch")))
+
+(defmethod full-name ((font pfa-font))
+  (object-value (dict-get (dict-get (font-dictionary font) #"FontInfo") #"FullName")))
+
+(defmethod family-name ((font pfa-font))
+  (object-value (dict-get (dict-get (font-dictionary font) #"FontInfo") #"FamilyName")))
+
+(defmethod weight ((font pfa-font))
+  (object-value (dict-get (dict-get (font-dictionary font) #"FontInfo") #"Weight")))
+
+;; FIXME procedure and inner numbers
+(defmethod font-matrix ((font pfa-font))
+  (object-value (dict-get (font-dictionary font) #"FontMatrix")))
+
+(defmethod bounding-box ((font pfa-font))
+  (object-value (dict-get (font-dictionary font) #"FontBBox")))
+
+(defmethod character-code-name ((font pfa-font) character-code)
+  (object-value (aref (object-value (dict-get (font-dictionary font) #"Encoding")) character-code)))
+
 #|
-Private dictionary entries
 
-BlueFuzz
-BlueScale
-BlueShift
-BLueValues
-ExpansionFactor
-FamilyBlues
-FamilyOtherBlues
-ForceBold
-LanguageGroup
-lenIV
-MinFeature
-ND
-NP
-OtherBlues
-OtherSubrs
-password
-RD
-RndStemUp
-StdVW
-StemSnapH
-StemSnapV
-Subrs
-UniqueID
++ glyph-count (font)
++ italic-angle (font)
++ underline-thickness (font)
++ underline-position (font)
++ fixed-pitch-p (font)
++ full-name (font)
++ family-name (font)
++ weight (font)
++ font-matrix (font)
++ bounding-box (font) - already a generic function
++ character-code-name (font)
+? charstring-type
+? character-index-glyph
+x nominal-width-x
+x default-width-x
+
+#"FontName"
+#"PaintType"
+#"FontType"
+#"FontMatrix"
+#"FontBBox"
+#"UniqueID"
+#"Metrics"
+#"StrokeWidth"
+
+#"FontInfo"
+>  #"version"
+>  #"Notice"
+>  #"FullName"
+>  #"FamilyName"
+>  #"Weight"
+>  #"ItalicAngle"
+>  #"isFixedPitch"
+>  #"UnderlinePosition"
+>  #"UnderlineThickness"
+
+#"Private"
+>  #"Subrs"
+>  #"OtherSubrs"
+>  #"UniqueID"
+>  #"BlueValues"
+>  #"OtherBlues"
+>  #"FamilyBlues"
+>  #"FamilyOtherBlues"
+>  #"BlueScale"
+>  #"BlueShift"
+>  #"BlueFuzz"
+>  #"StdHW"
+>  #"StdVW"
+>  #"StemSnapH"
+>  #"StemSnapV"
+>  #"ForceBold"
+>  #"LanguageGroup"
+>  #"password"
+>  #"lenIV"
+>  #"MinFeature"
+>  #"RndStemUp"
+
+#"CharStrings"
 |#
-
-(defclass type1-font ()
-  ())
-
-;; read-top-level - until /Private or eexec
-;; read-private
-;; read-charstrings
-
-
-(defun read-type1-stream (stream)
-  (let ((*ps-stream* stream)
-	(stack '())
-	(dict-stack '()))
-    (flet ((clear-stack () (setf stack '()))
-	   (def (val key) (setf (gethash key (first dict-stack)) val)))
-      (loop for obj = (read-object nil)
-	    until (eq :eof obj)
-	    do (cond
-		 ((not (object-executable-p object))
-		  (push obj stack))
-		 ((nameql #"dict" obj)
-		  (pop stack)
-		  (push (make-hash-table) dict-stack))
-		 ((nameql #"def" obj)
-		  (def (pop stack) (pop stack)))
-		 ((nameql #"end" obj)
-		  (push (pop dict-stack) stack))
-		 ;; { / } , [ , ] , readonly ?? , eexec
-		 )))))

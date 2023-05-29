@@ -5,7 +5,10 @@
 ;;;# GLYPH
 
 (defclass glyph ()
-  ((%name
+  ((%font
+    :initarg :font
+    :accessor glyph-font)
+   (%name
     :initarg :name
     :accessor glyph-name)
    (%code-vector
@@ -15,7 +18,7 @@
     :initarg :width
     :accessor glyph-width)))
 
-(defclass type1-glyph (glyph)
+(defclass type1-glyph (glyph) ;; FIXME name?
   ((%bounding-box
     :initarg :bounding-box
     :accessor glyph-bounding-box)
