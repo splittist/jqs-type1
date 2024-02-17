@@ -54,7 +54,7 @@
     :accessor cff-context-transient-array)
    (%hintmask-index
     :initform 0
-    :accessor ps-context-hintmask-index)))
+    :accessor cff-context-hintmask-index)))
 
 (defparameter *context* nil)
  
