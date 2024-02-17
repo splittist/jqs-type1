@@ -503,10 +503,11 @@
 	 +expert-subset-charset+)
 	(t
 	 (file-position stream offset)
-	 (let ((charset (make-array (1- glyph-count)))
-	       (format (read-card8 stream)))
+	 (let* ((charset-count (1- glyph-count))
+		(charset (make-array glyph-count))
+		(format (read-card8 stream)))
 	   (cond ((= 0 format)
-		  (loop for index below glyph-count
+		  (loop for index below charset-count
 			do (setf (aref charset index) (read-sid stream))))
 		 ((or (= 1 format)
 		      (= 2 format))
@@ -514,7 +515,7 @@
 		    (loop with index = 0
 			  for first = (read-sid stream)
 			  for nleft = (funcall read-nleft stream)
-			  until (= index (1- glyph-count))
+			  until (= index charset-count)
 			  do (setf (aref charset index) first)
 			     (incf index)
 			     (loop repeat nleft
